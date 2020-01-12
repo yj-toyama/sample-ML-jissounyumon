@@ -30,23 +30,16 @@ def main(argv):
         with open(FLAGS.log_dir+"words.tsv", 'w', encoding="utf-8") as f:
             f.writelines(words)
         #print("Embeddings metadata was saved to "+FLAGS.log_dir+"/words.tsv")
-    
+
     batch_size = FLAGS.batch_size
     embedding_size = FLAGS.embedding_size
     vocab_size = len(data.w_to_id)
+    num_sumpled = FLAGS.num_sumpled
     #placeholderの定義
     inputs = tf.placeholder(tf.int32, shape=[batch_size])
     correct = tf.placeholder(tf.int32, shape=[batch_size, 1])
 
-    #計算量を減らす工夫：Embedding層の導入
-    word_embedding = tf.Variable(tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0),name='word_embedding')
-    embed = tf.nn.embedding_lookup(word_embedding, inputs)
-    w_out = tf.Variable(tf.truncated_normal([vocab_size, embedding_size], stddev =1.0 / math.sqrt(embedding_size)))
-    b_out = tf.Variable(tf.zeros([vocab_size]))
-
-    #計算量を減らす工夫：ネガティブサンプリングの導入
-    nce_loss = tf.nn.nce_loss(weights=w_out, biases = b_out, labels=correct, inputs=embed, num_sampled=FLAGS.num_sumpled, num_classes=vocab_size)
-    loss = tf.reduce_mean(nce_loss)
+    loss = inference_loss(inputs,batch_size,embedding_size,vocab_size,correct,num_sumpled)
 
     global_step = tf.Variable(0, name='global_step', trainable=False)
     train_op = tf.train.GradientDescentOptimizer(FLAGS.learning_rate).minimize(loss, global_step=global_step)
@@ -82,7 +75,28 @@ def main(argv):
                 print('Average loss at step ', step, ': ', average_loss)
                 average_loss = 0
                 saver.save(sess, FLAGS.log_dir+'my_model.ckpt', step)
-    
+
+def inference_loss(inputs:'input_data',batch_size:'モデル構成要素',embedding_size:'モデル構成要素',
+    vocab_size:'モデル構成要素',correct:'actual data',num_sumpled:'num sample')->'loss':
+    '''tensorflowmodel
+    Args:
+        inputs(int): input data
+        batch_size:
+        embedding_size:
+        vocab_size:
+    Return:
+        int: model output
+    '''
+    #計算量を減らす工夫：Embedding層の導入
+    word_embedding = tf.Variable(tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0),name='word_embedding')
+    embed = tf.nn.embedding_lookup(word_embedding, inputs)
+    w_out = tf.Variable(tf.truncated_normal([vocab_size, embedding_size], stddev =1.0 / math.sqrt(embedding_size)))
+    b_out = tf.Variable(tf.zeros([vocab_size]))
+
+    #計算量を減らす工夫：ネガティブサンプリングの導入
+    nce_loss = tf.nn.nce_loss(weights=w_out, biases = b_out, labels=correct, inputs=embed, num_sampled=FLAGS.num_sumpled, num_classes=vocab_size)
+    loss = tf.reduce_mean(nce_loss)
+    return loss
 
 if __name__ == '__main__':
     tf.app.run()

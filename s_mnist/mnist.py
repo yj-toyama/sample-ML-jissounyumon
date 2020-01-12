@@ -16,7 +16,7 @@ x = tf.placeholder(tf.float32, [None, 784])
 input = tf.reshape(x, [-1, num_seq, num_input])
 
 
-#ユニット数128個のLSTMセル
+#ユニット数(中間層)128個のLSTMセル
 #三段に積む
 stacked_cells = []
 for i in range(2):
